@@ -11,7 +11,66 @@ const TaskForm = dynamic(() => import('../components/TaskForm'), { ssr: false })
 const SettingsModal = dynamic(() => import('../components/SettingsModal'), { ssr: false });
 const CompletedDetail = dynamic(() => import('../components/CompletedDetail'), { ssr: false });
 
-export default function Home() {
+function LoginPage() {
+  const [id, setId] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const r = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, password }),
+      });
+      const data = await r.json();
+      if (data.ok) {
+        window.location.reload();
+      } else {
+        setError(data.error || '로그인에 실패했습니다.');
+        setLoading(false);
+      }
+    } catch {
+      setError('서버에 연결할 수 없습니다.');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ height: '100vh', background: '#0d0d1a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Noto Sans KR',sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');*{box-sizing:border-box;}input{outline:none;font-family:inherit;}input:focus{border-color:#00D4AA!important;}`}</style>
+      <form onSubmit={handleLogin} style={{ background: '#161625', border: '1px solid #2a2a3e', borderRadius: 16, padding: 36, width: 340, maxWidth: '92vw' }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#fff', letterSpacing: '-0.5px' }}>우선순위 매트릭스</div>
+          <div style={{ fontSize: 11, color: '#666', marginTop: 6 }}>로그인이 필요합니다</div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <input
+            type="text" value={id} onChange={e => setId(e.target.value)}
+            placeholder="아이디" autoComplete="username" required disabled={loading}
+            style={{ background: '#0d0d1a', border: '1px solid #2a2a3e', borderRadius: 8, padding: '10px 12px', color: '#e0e0e0', fontSize: 13 }}
+          />
+          <input
+            type="password" value={password} onChange={e => setPassword(e.target.value)}
+            placeholder="비밀번호" autoComplete="current-password" required disabled={loading}
+            style={{ background: '#0d0d1a', border: '1px solid #2a2a3e', borderRadius: 8, padding: '10px 12px', color: '#e0e0e0', fontSize: 13 }}
+          />
+          {error && <div style={{ fontSize: 11, color: '#ff6b6b', textAlign: 'center' }}>{error}</div>}
+          <button type="submit" disabled={loading}
+            style={{ background: loading ? '#006655' : '#00D4AA', color: '#000', border: 'none', padding: '11px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', marginTop: 4 }}>
+            {loading ? '로그인 중...' : '로그인'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function AppContent() {
   const [mounted, setMounted] = useState(false);
   const tm = useTaskManager();
   const isMobile = useIsMobile();
@@ -116,8 +175,9 @@ export default function Home() {
           onDeleteMemo={idx => tm.completedDeleteMemo(tm.detailTask.id, idx)} th={th} />
       )}
       {tm.showSettings && (
-        <SettingsModal sideRight={tm.sideRight} setSideRight={tm.setSideRight} themeKey={tm.themeKey} setThemeKey={tm.setThemeKey}
-          appName={tm.appName} setAppName={tm.setAppName} onClose={() => tm.setShowSettings(false)} th={th} />
+        <SettingsModal
+          sideRight={tm.sideRight} themeKey={tm.themeKey} appName={tm.appName}
+          onSave={tm.saveSettingsRemote} onClose={() => tm.setShowSettings(false)} th={th} />
       )}
 
       {tm.syncStatus === 'syncing' && (
@@ -126,4 +186,15 @@ export default function Home() {
       )}
     </div>
   );
+}
+
+export default function Home({ authenticated }) {
+  if (!authenticated) return <LoginPage />;
+  return <AppContent />;
+}
+
+export async function getServerSideProps(context) {
+  const { isAuthenticated } = await import('./api/_auth');
+  const authenticated = isAuthenticated({ headers: context.req.headers });
+  return { props: { authenticated } };
 }

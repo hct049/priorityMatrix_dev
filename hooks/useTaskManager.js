@@ -38,11 +38,6 @@ export function useTaskManager() {
   const enrichedRef = useRef(enriched);
   enrichedRef.current = enriched;
 
-  useEffect(() => {
-    if (!settingsLoaded) return;
-    apiPost({ action: 'saveSettings', settings: { sideRight, themeKey, appName } }).catch(() => {});
-  }, [sideRight, themeKey, appName, settingsLoaded]);
-
   useEffect(() => { document.title = appName; }, [appName]);
 
   useEffect(() => {
@@ -105,6 +100,16 @@ export function useTaskManager() {
       if (ok) { setForm(EMPTY_FORM); setShowForm(false); }
       else { setTasks(ts => ts.filter(x => x.id !== t.id)); nextId.current--; }
     }
+  }, [syncOp]);
+
+  const saveSettingsRemote = useCallback(async ({ sideRight: sr, themeKey: tk, appName: an }) => {
+    const ok = await syncOp(() => apiPost({ action: 'saveSettings', settings: { sideRight: sr, themeKey: tk, appName: an } }));
+    if (ok) {
+      setSideRight(sr);
+      setThemeKey(tk);
+      setAppName(an);
+    }
+    return ok;
   }, [syncOp]);
 
   const startEdit = useCallback((t) => {
@@ -194,7 +199,7 @@ export function useTaskManager() {
     enriched, filtered,
     setForm, setEditId, setShowForm, setSelected, setFilter, setTab,
     setSideRight, setThemeKey, setAppName, setShowSettings, setDetailTask,
-    saveTask, startEdit, cancelForm, deleteTask, restoreDeleted, purgeDeleted,
+    saveTask, saveSettingsRemote, startEdit, cancelForm, deleteTask, restoreDeleted, purgeDeleted,
     completeTask, undoComplete, snoozeRepeat, toggleWeekday,
     activeAddMemo, activeEditMemo, activeDeleteMemo,
     completedAddMemo, completedEditMemo, completedDeleteMemo,

@@ -1,7 +1,5 @@
 // ============================================================
 //  우선순위 매트릭스 — Google Apps Script 라이브러리
-//  사용자의 Apps Script 프로젝트에 "라이브러리"로 추가해서 사용
-//  SHEET_ID는 사용자가 PropertiesService에 설정
 // ============================================================
 
 const TASKS_SHEET = "tasks";
@@ -16,6 +14,11 @@ const COMPLETED_HEADERS = [
   "id", "title", "deadline", "deadlineTime", "importance", "note",
   "repeat", "repeatInterval", "repeatWeekdays", "memos", "completedAt"
 ];
+const SETTINGS_HEADERS = ["key", "value"];
+
+// ------------------------------------------------------------------
+//  내부 유틸
+// ------------------------------------------------------------------
 
 function _getSheetId() {
   const id = PropertiesService.getScriptProperties().getProperty("SHEET_ID");
@@ -23,15 +26,19 @@ function _getSheetId() {
   return id;
 }
 
+function _applyHeaderStyle(sh, headers) {
+  sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sh.setFrozenRows(1);
+  sh.getRange(1, 1, 1, headers.length)
+    .setBackground("#1a1a2e").setFontColor("#00D4AA").setFontWeight("bold");
+}
+
 function _getOrCreateSheet(name, headers) {
   const ss = SpreadsheetApp.openById(_getSheetId());
   let sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);
-    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sh.setFrozenRows(1);
-    sh.getRange(1, 1, 1, headers.length)
-      .setBackground("#1a1a2e").setFontColor("#00D4AA").setFontWeight("bold");
+    _applyHeaderStyle(sh, headers);
   }
   return sh;
 }
@@ -69,12 +76,66 @@ function _objectToRow(obj, headers) {
   });
 }
 
+// ------------------------------------------------------------------
+//  초기화 / DB 관리
+// ------------------------------------------------------------------
+
 function initPriorityMatrix(sheetId) {
   PropertiesService.getScriptProperties().setProperty("SHEET_ID", sheetId);
   _getOrCreateSheet(TASKS_SHEET, TASK_HEADERS);
   _getOrCreateSheet(COMPLETED_SHEET, COMPLETED_HEADERS);
-  _getOrCreateSheet(SETTINGS_SHEET, ["key", "value"]);
+  _getOrCreateSheet(SETTINGS_SHEET, SETTINGS_HEADERS);
 }
+
+// 전체 데이터 삭제 후 빈 DB 재생성 (시트 삭제 → 재생성)
+function resetDB(sheetId) {
+  PropertiesService.getScriptProperties().setProperty("SHEET_ID", sheetId);
+  const ss = SpreadsheetApp.openById(sheetId);
+  const sheets = [
+    [TASKS_SHEET, TASK_HEADERS],
+    [COMPLETED_SHEET, COMPLETED_HEADERS],
+    [SETTINGS_SHEET, SETTINGS_HEADERS],
+  ];
+  sheets.forEach(([name, headers]) => {
+    const existing = ss.getSheetByName(name);
+    if (existing) ss.deleteSheet(existing);
+    _applyHeaderStyle(ss.insertSheet(name), headers);
+  });
+  return { ok: true };
+}
+
+// 데이터를 유지하면서 헤더만 최신 스키마로 동기화
+function migrateSchema(sheetId) {
+  PropertiesService.getScriptProperties().setProperty("SHEET_ID", sheetId);
+  const ss = SpreadsheetApp.openById(sheetId);
+  const sheets = [
+    [TASKS_SHEET, TASK_HEADERS],
+    [COMPLETED_SHEET, COMPLETED_HEADERS],
+    [SETTINGS_SHEET, SETTINGS_HEADERS],
+  ];
+  sheets.forEach(([name, headers]) => {
+    let sh = ss.getSheetByName(name);
+    if (!sh) {
+      sh = ss.insertSheet(name);
+      _applyHeaderStyle(sh, headers);
+      return;
+    }
+    const currentHeaders = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
+    // 누락된 컬럼을 오른쪽에 추가
+    headers.forEach((h, i) => {
+      if (!currentHeaders.includes(h)) {
+        const col = sh.getLastColumn() + 1;
+        sh.getRange(1, col).setValue(h)
+          .setBackground("#1a1a2e").setFontColor("#00D4AA").setFontWeight("bold");
+      }
+    });
+  });
+  return { ok: true };
+}
+
+// ------------------------------------------------------------------
+//  CRUD
+// ------------------------------------------------------------------
 
 function getTasks() {
   const sh = _getOrCreateSheet(TASKS_SHEET, TASK_HEADERS);
@@ -149,7 +210,7 @@ function updateMemos(id, memos, sheetName) {
 
 function getSettings() {
   const ss = SpreadsheetApp.openById(_getSheetId());
-  let sh = ss.getSheetByName(SETTINGS_SHEET);
+  const sh = ss.getSheetByName(SETTINGS_SHEET);
   if (!sh) return { ok: true, data: {} };
   const data = sh.getDataRange().getValues();
   const result = {};
@@ -162,9 +223,7 @@ function saveSettings(settings) {
   let sh = ss.getSheetByName(SETTINGS_SHEET);
   if (!sh) {
     sh = ss.insertSheet(SETTINGS_SHEET);
-    sh.getRange(1, 1, 1, 2).setValues([["key", "value"]]);
-    sh.setFrozenRows(1);
-    sh.getRange(1, 1, 1, 2).setBackground("#1a1a2e").setFontColor("#00D4AA").setFontWeight("bold");
+    _applyHeaderStyle(sh, SETTINGS_HEADERS);
   }
   const existing = sh.getDataRange().getValues();
   const keyToRow = {};
@@ -177,9 +236,17 @@ function saveSettings(settings) {
   return { ok: true };
 }
 
+// ------------------------------------------------------------------
+//  라이브러리 연동 테스트
+// ------------------------------------------------------------------
+
 function ping() {
   return { ok: true, message: "PriorityMatrixLibrary 연동 정상", timestamp: new Date().toISOString() };
 }
+
+// ------------------------------------------------------------------
+//  Public API 라우터
+// ------------------------------------------------------------------
 
 function callPublicAPI(action, params) {
   try {

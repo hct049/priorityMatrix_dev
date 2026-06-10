@@ -1,5 +1,8 @@
-// GAS_URL은 서버에서만 읽힙니다 — 클라이언트에 노출되지 않습니다.
+import { isAuthenticated } from './_auth';
+
 export default async function handler(req, res) {
+  if (!isAuthenticated(req)) return res.status(401).json({ error: 'UNAUTHORIZED' });
+
   const gasUrl = process.env.GAS_URL;
   if (!gasUrl) return res.status(500).json({ error: 'GAS_URL이 설정되지 않았습니다.' });
 
