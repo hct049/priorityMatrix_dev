@@ -26,6 +26,8 @@ export function useTaskManager() {
   const [needsWebUpdate, setNeedsWebUpdate] = useState(false);
   const [appliedGasVersion, setAppliedGasVersion] = useState(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [updateCompletedNotice, setUpdateCompletedNotice] = useState(null); // { type, version }
+  const [webPendingNotice, setWebPendingNotice] = useState(null); // version string
   const nextId = useRef(Date.now());
 
   const refs = useRef({});
@@ -79,6 +81,32 @@ export function useTaskManager() {
           const skipWeb = cfg.skipUpdateWebVersion === webVersion;
           if ((gasUpdate && !skipGas) || (webUpdate && !skipWeb)) {
             setShowUpdateModal(true);
+          }
+
+          // 업데이트 완료 알림 (1회) 처리
+          const justCompleted = cfg.updateJustCompleted;
+          const justCompletedShown = cfg.updateJustCompletedShown;
+          const webPending = cfg.webUpdatePending;
+
+          // GAS 업데이트 완료 알림
+          if (justCompleted && justCompleted === gasVersion && justCompleted !== justCompletedShown) {
+            setUpdateCompletedNotice({ type: 'gas', version: justCompleted });
+            apiPost({ action: 'saveSettings', settings: { updateJustCompletedShown: justCompleted } }).catch(() => {});
+          }
+
+          // 웹 업데이트 대기 중 / 완료 판정
+          if (webPending) {
+            if (webUpdate) {
+              // 아직 재배포 안 됨
+              setWebPendingNotice(webPending);
+            } else {
+              // 재배포 완료
+              apiPost({ action: 'saveSettings', settings: { webUpdatePending: '' } }).catch(() => {});
+              if (webPending !== justCompletedShown) {
+                setUpdateCompletedNotice({ type: 'web', version: webPending });
+                apiPost({ action: 'saveSettings', settings: { updateJustCompletedShown: webPending } }).catch(() => {});
+              }
+            }
           }
         }
 
@@ -146,7 +174,7 @@ export function useTaskManager() {
     try {
       const r = await apiPost({ action: 'migrateSchema' });
       if (r && r.ok && versionInfo) {
-        await apiPost({ action: 'saveSettings', settings: { appliedGasVersion: versionInfo.gasVersion, skipUpdateGasVersion: '' } });
+        await apiPost({ action: 'saveSettings', settings: { appliedGasVersion: versionInfo.gasVersion, skipUpdateGasVersion: '', updateJustCompleted: versionInfo.gasVersion } });
         setAppliedGasVersion(versionInfo.gasVersion);
         setNeedsGasUpdate(false);
         return true;
@@ -159,10 +187,16 @@ export function useTaskManager() {
     try {
       const r = await fetch('/api/trigger-update', { method: 'POST' });
       const data = await r.json();
-      if (data.ok) { setNeedsWebUpdate(false); return true; }
+      if (data.ok) {
+        setNeedsWebUpdate(false);
+        if (versionInfo?.webVersion) {
+          await apiPost({ action: 'saveSettings', settings: { webUpdatePending: versionInfo.webVersion } }).catch(() => {});
+        }
+        return true;
+      }
       return false;
     } catch { return false; }
-  }, []);
+  }, [versionInfo]);
 
   const dismissUpdate = useCallback(async (skipGas, skipWeb) => {
     const settings = {};
@@ -173,6 +207,14 @@ export function useTaskManager() {
     }
     setShowUpdateModal(false);
   }, [versionInfo]);
+
+  const dismissUpdateNotice = useCallback(() => {
+    setUpdateCompletedNotice(null);
+  }, []);
+
+  const dismissWebPendingNotice = useCallback(() => {
+    setWebPendingNotice(null);
+  }, []);
 
   const startEdit = useCallback((t) => {
     setForm({ title: t.title, deadline: t.deadline, deadlineTime: t.deadlineTime || '', importance: t.importance, note: t.note || '', repeat: t.repeat || '', repeatInterval: t.repeatInterval || 2, repeatWeekdays: t.repeatWeekdays || [], autoRepeat: t.autoRepeat !== false });
@@ -264,6 +306,7 @@ export function useTaskManager() {
     saveTask, saveSettingsRemote, startEdit, cancelForm, deleteTask, restoreDeleted, purgeDeleted,
     versionInfo, needsGasUpdate, needsWebUpdate, appliedGasVersion, showUpdateModal, setShowUpdateModal,
     applyGasUpdate, triggerWebUpdate, dismissUpdate,
+    updateCompletedNotice, webPendingNotice, dismissUpdateNotice, dismissWebPendingNotice,
     completeTask, undoComplete, snoozeRepeat, toggleWeekday,
     activeAddMemo, activeEditMemo, activeDeleteMemo,
     completedAddMemo, completedEditMemo, completedDeleteMemo,

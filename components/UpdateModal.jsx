@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function UpdateModal({
   versionInfo,
@@ -17,9 +17,33 @@ export default function UpdateModal({
   const [gasUpdated, setGasUpdated] = useState(false);
   const [webTriggered, setWebTriggered] = useState(false);
   const [error, setError] = useState(null);
+  const [countdown, setCountdown] = useState(null);
+  const countdownRef = useRef(null);
 
   const isUpdating = phase === 'updating';
   const isDone = phase === 'done';
+
+  // 완료 시 20초 카운트다운 시작
+  useEffect(() => {
+    if (!isDone) return;
+    setCountdown(20);
+    countdownRef.current = setInterval(() => {
+      setCountdown(c => {
+        if (c <= 1) {
+          clearInterval(countdownRef.current);
+          window.location.reload();
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(countdownRef.current);
+  }, [isDone]);
+
+  function cancelCountdown() {
+    clearInterval(countdownRef.current);
+    setCountdown(null);
+  }
 
   async function handleUpdate() {
     setPhase('updating');
@@ -49,7 +73,11 @@ export default function UpdateModal({
             {isDone ? '✅ 업데이트 완료' : '🔔 업데이트 가능'}
           </div>
           <div style={{ fontSize: 11, color: th.textMuted }}>
-            {isDone ? '변경사항이 적용되었습니다.' : '적용 가능한 새로운 업데이트가 있습니다.'}
+            {isDone
+              ? webTriggered
+                ? 'GAS 업데이트 완료. 웹 재배포가 진행됩니다.'
+                : '변경사항이 적용되었습니다.'
+              : '적용 가능한 새로운 업데이트가 있습니다.'}
           </div>
         </div>
 
@@ -78,11 +106,11 @@ export default function UpdateModal({
                   {currentWebVersion} → {versionInfo?.webVersion}
                 </div>
                 {webTriggered
-                  ? <div style={{ fontSize: 10, color: '#FFB800', marginTop: 2 }}>재배포 요청됨 · Vercel 완료 후 새로 고침 필요</div>
-                  : <div style={{ fontSize: 10, color: th.textFaint, marginTop: 2 }}>GitHub Action으로 자동 업데이트 후 Vercel 재배포</div>}
+                  ? <div style={{ fontSize: 10, color: '#FFB800', marginTop: 2 }}>재배포 요청됨 · Vercel 완료 후 새로 고침에서 반영됩니다</div>
+                  : <div style={{ fontSize: 10, color: th.textFaint, marginTop: 2 }}>GitHub Action으로 동기화 → Vercel 자동 재배포</div>}
               </div>
               {webTriggered
-                ? <span style={{ fontSize: 18, color: '#FFB800' }}>⏳</span>
+                ? <span style={{ fontSize: 16, color: '#FFB800' }}>⏳</span>
                 : isUpdating ? <span style={{ fontSize: 11, color: th.textMuted }}>⏳</span>
                 : null}
             </div>
@@ -94,10 +122,33 @@ export default function UpdateModal({
         )}
 
         {isDone ? (
-          <button onClick={() => window.location.reload()}
-            style={{ width: '100%', background: '#00D4AA', color: '#000', border: 'none', padding: '10px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-            🔄 새로 고침
-          </button>
+          <>
+            {countdown !== null ? (
+              <div style={{ textAlign: 'center', marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: th.textMuted, marginBottom: 10 }}>
+                  <span style={{ color: '#00D4AA', fontWeight: 700 }}>{countdown}초</span> 후 자동으로 새로 고침됩니다
+                </div>
+                <div style={{ height: 3, background: th.border2, borderRadius: 2, overflow: 'hidden', marginBottom: 12 }}>
+                  <div style={{ height: '100%', background: '#00D4AA', width: `${(countdown / 20) * 100}%`, transition: 'width 1s linear', borderRadius: 2 }} />
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => window.location.reload()}
+                    style={{ flex: 1, background: '#00D4AA', color: '#000', border: 'none', padding: '9px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    지금 새로 고침
+                  </button>
+                  <button onClick={cancelCountdown}
+                    style={{ background: 'transparent', color: th.textMuted, border: `1px solid ${th.border2}`, padding: '9px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    취소
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => window.location.reload()}
+                style={{ width: '100%', background: '#00D4AA', color: '#000', border: 'none', padding: '10px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 8 }}>
+                🔄 새로 고침
+              </button>
+            )}
+          </>
         ) : (
           <>
             <button onClick={handleUpdate} disabled={isUpdating}
