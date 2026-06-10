@@ -155,6 +155,28 @@ function AppContent() {
           </div>
         </div>
 
+        {tm.updateCompletedNotice && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', background: '#00D4AA18', border: '1px solid #00D4AA44', borderRadius: 8 }}>
+            <span style={{ fontSize: 12, color: '#00D4AA', fontWeight: 600 }}>
+              ✅ v{tm.updateCompletedNotice.version} {tm.updateCompletedNotice.type === 'web' ? '웹' : 'DB 스키마'} 업데이트가 완료되었습니다!
+            </span>
+            <button onClick={tm.dismissUpdateNotice} style={{ background: 'transparent', border: 'none', color: '#00D4AA', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>✕</button>
+          </div>
+        )}
+
+        {tm.webPendingNotice && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', background: '#FFB80015', border: '1px solid #FFB80055', borderRadius: 8 }}>
+            <div>
+              <span style={{ fontSize: 12, color: '#FFB800', fontWeight: 600 }}>⏳ 웹 v{tm.webPendingNotice} 재배포 대기 중</span>
+              <span style={{ fontSize: 11, color: '#FFB80099', marginLeft: 8 }}>Vercel 재배포 완료 후 새로 고침하거나 Vercel에서 직접 확인하세요.</span>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 10 }}>
+              <button onClick={() => window.location.reload()} style={{ background: '#FFB800', color: '#000', border: 'none', padding: '4px 10px', borderRadius: 5, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>새로 고침</button>
+              <button onClick={tm.dismissWebPendingNotice} style={{ background: 'transparent', border: 'none', color: '#FFB800', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>✕</button>
+            </div>
+          </div>
+        )}
+
         <MatrixGrid tm={tm} th={th} />
 
         <div style={{ padding: '9px 12px', background: th.legendBg, borderRadius: 6, border: `1px solid ${th.legendBorder}` }}>
