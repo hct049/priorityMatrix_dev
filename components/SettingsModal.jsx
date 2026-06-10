@@ -136,7 +136,7 @@ export default function SettingsModal({ sideRight, themeKey, appName, onSave, on
             style={{ background: 'transparent', color: th.textMuted, border: 'none', padding: 0, fontSize: 11, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: disabled ? 0.4 : 0.7 }}>
             로그아웃
           </button>
-          <span style={{ fontSize: 10, color: th.textFaint }}>WEB {APP_VERSION} / GAS {versionInfo?.gasVersion || 'v0.0'}</span>
+          <span style={{ fontSize: 10, color: th.textFaint }}>WEB {APP_VERSION} / GAS v{versionInfo?.gasVersion || '0.0'}</span>
         </div>
       </div>
     </div>

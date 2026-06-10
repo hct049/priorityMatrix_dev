@@ -48,7 +48,7 @@ export function useTaskManager() {
   useEffect(() => { document.title = appName; }, [appName]);
 
   useEffect(() => {
-    const currentWebVer = APP_VERSION;
+    const currentWebVer = APP_VERSION.replace('v', '');
     Promise.all([apiGet('getTasks'), apiGet('getCompleted'), apiGet('getSettings'), apiGet('getVersionInfo')])
       .then(([t, c, s, v]) => {
         if (t.ok) {
