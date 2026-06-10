@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { APP_VERSION } from '../lib/constants';
 import { useIsMobile } from '../hooks/useIsMobile';
 
-export default function SettingsModal({ sideRight, themeKey, appName, onSave, onClose, th }) {
+export default function SettingsModal({ sideRight, themeKey, appName, onSave, onClose, th, versionInfo, needsGasUpdate, needsWebUpdate, appliedGasVersion, onShowUpdateModal }) {
   const isMobile = useIsMobile();
   const [localSideRight, setLocalSideRight] = useState(sideRight);
   const [localThemeKey, setLocalThemeKey] = useState(themeKey);
@@ -102,6 +102,23 @@ export default function SettingsModal({ sideRight, themeKey, appName, onSave, on
           </div>
 
           {error && <div style={{ fontSize: 11, color: '#ff6b6b', textAlign: 'center' }}>{error}</div>}
+
+          {(needsGasUpdate || needsWebUpdate) && (
+            <div style={{ background: '#FFB80015', border: '1px solid #FFB80055', borderRadius: 8, padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#FFB800' }}>🔔 업데이트 가능</div>
+                <div style={{ fontSize: 10, color: th.textMuted, marginTop: 2 }}>
+                  {needsGasUpdate && `DB: ${appliedGasVersion || '미적용'} → ${versionInfo?.gasVersion}`}
+                  {needsGasUpdate && needsWebUpdate && ' · '}
+                  {needsWebUpdate && `웹: → ${versionInfo?.webVersion}`}
+                </div>
+              </div>
+              <button onClick={() => { onClose(); onShowUpdateModal(); }} disabled={disabled}
+                style={{ background: '#FFB800', color: '#000', border: 'none', padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit', flexShrink: 0, marginLeft: 10 }}>
+                업데이트
+              </button>
+            </div>
+          )}
         </div>
 
         <button onClick={handleSave} disabled={disabled}
