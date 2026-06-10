@@ -1,0 +1,28 @@
+name: Sync from upstream
+
+on:
+  workflow_dispatch:  # 웹앱 "웹 업데이트" 버튼 또는 GitHub Actions 탭에서 수동 실행
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync from upstream
+        env:
+          UPSTREAM_REPO: ${{ vars.UPSTREAM_REPO }}
+        run: |
+          UPSTREAM="${UPSTREAM_REPO:-hct049/priorityMatrix}"
+          git remote add upstream "https://github.com/${UPSTREAM}.git"
+          git fetch upstream
+          git merge upstream/dev --allow-unrelated-histories -m "chore: sync from upstream"
+          git push origin HEAD

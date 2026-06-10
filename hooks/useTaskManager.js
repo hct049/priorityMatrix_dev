@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { apiGet, apiPost } from '../lib/api';
-import { EMPTY_FORM } from '../lib/constants';
+import { EMPTY_FORM, APP_VERSION } from '../lib/constants';
 import { today, enrichTask, advanceDeadline, isPurgeReady } from '../lib/taskLogic';
 
 export function useTaskManager() {
@@ -21,6 +21,11 @@ export function useTaskManager() {
   const [detailTask, setDetailTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState('idle');
+  const [versionInfo, setVersionInfo] = useState(null);
+  const [needsGasUpdate, setNeedsGasUpdate] = useState(false);
+  const [needsWebUpdate, setNeedsWebUpdate] = useState(false);
+  const [appliedGasVersion, setAppliedGasVersion] = useState(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const nextId = useRef(Date.now());
 
   const refs = useRef({});
@@ -41,20 +46,45 @@ export function useTaskManager() {
   useEffect(() => { document.title = appName; }, [appName]);
 
   useEffect(() => {
-    Promise.all([apiGet('getTasks'), apiGet('getCompleted'), apiGet('getSettings')])
-      .then(([t, c, s]) => {
+    const currentWebVer = APP_VERSION.replace('v', '');
+    Promise.all([apiGet('getTasks'), apiGet('getCompleted'), apiGet('getSettings'), apiGet('getVersionInfo')])
+      .then(([t, c, s, v]) => {
         if (t.ok) {
           const all = t.data || [];
           setTasks(all.filter(x => !x.deletedAt || x.deletedAt === ''));
           setDeleted(all.filter(x => x.deletedAt && x.deletedAt !== ''));
         }
         if (c.ok) setCompleted(c.data || []);
+
+        let cfg = {};
         if (s.ok && s.data) {
-          const cfg = s.data;
+          cfg = s.data;
           if (cfg.sideRight !== undefined) setSideRight(cfg.sideRight === 'true' || cfg.sideRight === true);
           if (cfg.themeKey) setThemeKey(cfg.themeKey);
           if (cfg.appName) setAppName(cfg.appName);
+          if (cfg.appliedGasVersion) setAppliedGasVersion(cfg.appliedGasVersion);
         }
+
+        // 버전 비교 및 업데이트 모달 결정
+        if (v.ok && v.data) {
+          setVersionInfo(v.data);
+          const { gasVersion, webVersion } = v.data;
+          const storedGasVer = cfg.appliedGasVersion || null;
+          const gasUpdate = !!storedGasVer && storedGasVer !== gasVersion;
+          const webUpdate = webVersion !== currentWebVer;
+          setNeedsGasUpdate(gasUpdate);
+          setNeedsWebUpdate(webUpdate);
+          // 버전별 skip: 해당 버전에서 skip 했으면 무시
+          const skipGas = cfg.skipUpdateGasVersion === gasVersion;
+          const skipWeb = cfg.skipUpdateWebVersion === webVersion;
+          if ((gasUpdate && !skipGas) || (webUpdate && !skipWeb)) {
+            setShowUpdateModal(true);
+          }
+        }
+
+        // 현재 웹 버전을 settings에 기록
+        apiPost({ action: 'saveSettings', settings: { appliedWebVersion: currentWebVer } }).catch(() => {});
+
         setSettingsLoaded(true);
         setLoading(false);
       })
@@ -111,6 +141,38 @@ export function useTaskManager() {
     }
     return ok;
   }, [syncOp]);
+
+  const applyGasUpdate = useCallback(async () => {
+    try {
+      const r = await apiPost({ action: 'migrateSchema' });
+      if (r && r.ok && versionInfo) {
+        await apiPost({ action: 'saveSettings', settings: { appliedGasVersion: versionInfo.gasVersion, skipUpdateGasVersion: '' } });
+        setAppliedGasVersion(versionInfo.gasVersion);
+        setNeedsGasUpdate(false);
+        return true;
+      }
+      return false;
+    } catch { return false; }
+  }, [versionInfo]);
+
+  const triggerWebUpdate = useCallback(async () => {
+    try {
+      const r = await fetch('/api/trigger-update', { method: 'POST' });
+      const data = await r.json();
+      if (data.ok) { setNeedsWebUpdate(false); return true; }
+      return false;
+    } catch { return false; }
+  }, []);
+
+  const dismissUpdate = useCallback(async (skipGas, skipWeb) => {
+    const settings = {};
+    if (skipGas && versionInfo) settings.skipUpdateGasVersion = versionInfo.gasVersion;
+    if (skipWeb && versionInfo) settings.skipUpdateWebVersion = versionInfo.webVersion;
+    if (Object.keys(settings).length > 0) {
+      await apiPost({ action: 'saveSettings', settings });
+    }
+    setShowUpdateModal(false);
+  }, [versionInfo]);
 
   const startEdit = useCallback((t) => {
     setForm({ title: t.title, deadline: t.deadline, deadlineTime: t.deadlineTime || '', importance: t.importance, note: t.note || '', repeat: t.repeat || '', repeatInterval: t.repeatInterval || 2, repeatWeekdays: t.repeatWeekdays || [], autoRepeat: t.autoRepeat !== false });
@@ -200,6 +262,8 @@ export function useTaskManager() {
     setForm, setEditId, setShowForm, setSelected, setFilter, setTab,
     setSideRight, setThemeKey, setAppName, setShowSettings, setDetailTask,
     saveTask, saveSettingsRemote, startEdit, cancelForm, deleteTask, restoreDeleted, purgeDeleted,
+    versionInfo, needsGasUpdate, needsWebUpdate, appliedGasVersion, showUpdateModal, setShowUpdateModal,
+    applyGasUpdate, triggerWebUpdate, dismissUpdate,
     completeTask, undoComplete, snoozeRepeat, toggleWeekday,
     activeAddMemo, activeEditMemo, activeDeleteMemo,
     completedAddMemo, completedEditMemo, completedDeleteMemo,

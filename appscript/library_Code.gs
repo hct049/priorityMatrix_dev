@@ -2,6 +2,10 @@
 //  우선순위 매트릭스 — Google Apps Script 라이브러리
 // ============================================================
 
+// 개발자가 배포 시 버전을 올립니다
+const CURRENT_GAS_VERSION = '0.0.0.0';
+const CURRENT_WEB_VERSION = '0.0.0.0';
+
 const TASKS_SHEET = "tasks";
 const COMPLETED_SHEET = "completed";
 const SETTINGS_SHEET = "settings";
@@ -104,10 +108,10 @@ function resetDB(sheetId) {
   return { ok: true };
 }
 
-// 데이터를 유지하면서 헤더만 최신 스키마로 동기화
+// 데이터를 유지하면서 헤더만 최신 스키마로 동기화 (sheetId 생략 시 저장된 값 사용)
 function migrateSchema(sheetId) {
-  PropertiesService.getScriptProperties().setProperty("SHEET_ID", sheetId);
-  const ss = SpreadsheetApp.openById(sheetId);
+  if (sheetId) PropertiesService.getScriptProperties().setProperty("SHEET_ID", sheetId);
+  const ss = SpreadsheetApp.openById(_getSheetId());
   const sheets = [
     [TASKS_SHEET, TASK_HEADERS],
     [COMPLETED_SHEET, COMPLETED_HEADERS],
@@ -244,6 +248,10 @@ function ping() {
   return { ok: true, message: "PriorityMatrixLibrary 연동 정상", timestamp: new Date().toISOString() };
 }
 
+function getVersionInfo() {
+  return { ok: true, data: { gasVersion: CURRENT_GAS_VERSION, webVersion: CURRENT_WEB_VERSION } };
+}
+
 // ------------------------------------------------------------------
 //  Public API 라우터
 // ------------------------------------------------------------------
@@ -262,6 +270,8 @@ function callPublicAPI(action, params) {
     if (action === "updateMemos") return updateMemos(params.id, params.memos, params.sheet);
     if (action === "saveSettings") return saveSettings(params.settings);
     if (action === "resetDB") return resetDB(_getSheetId());
+    if (action === "migrateSchema") return migrateSchema();
+    if (action === "getVersionInfo") return getVersionInfo();
     return { error: "Unknown action: " + action };
   } catch (err) {
     return { error: err.message };

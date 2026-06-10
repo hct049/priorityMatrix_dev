@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { THEMES, EMPTY_FORM } from '../lib/constants';
+import { THEMES, EMPTY_FORM, APP_VERSION } from '../lib/constants';
 import { useTaskManager } from '../hooks/useTaskManager';
 import { useIsMobile } from '../hooks/useIsMobile';
 import SidePanel from '../components/SidePanel';
@@ -10,6 +10,7 @@ import SyncBadge from '../components/SyncBadge';
 const TaskForm = dynamic(() => import('../components/TaskForm'), { ssr: false });
 const SettingsModal = dynamic(() => import('../components/SettingsModal'), { ssr: false });
 const CompletedDetail = dynamic(() => import('../components/CompletedDetail'), { ssr: false });
+const UpdateModal = dynamic(() => import('../components/UpdateModal'), { ssr: false });
 
 function LoginPage() {
   const [id, setId] = useState('');
@@ -177,7 +178,21 @@ function AppContent() {
       {tm.showSettings && (
         <SettingsModal
           sideRight={tm.sideRight} themeKey={tm.themeKey} appName={tm.appName}
-          onSave={tm.saveSettingsRemote} onClose={() => tm.setShowSettings(false)} th={th} />
+          onSave={tm.saveSettingsRemote} onClose={() => tm.setShowSettings(false)} th={th}
+          versionInfo={tm.versionInfo} needsGasUpdate={tm.needsGasUpdate} needsWebUpdate={tm.needsWebUpdate}
+          appliedGasVersion={tm.appliedGasVersion} onShowUpdateModal={() => tm.setShowUpdateModal(true)} />
+      )}
+      {tm.showUpdateModal && (
+        <UpdateModal
+          versionInfo={tm.versionInfo}
+          needsGasUpdate={tm.needsGasUpdate}
+          needsWebUpdate={tm.needsWebUpdate}
+          appliedGasVersion={tm.appliedGasVersion}
+          currentWebVersion={APP_VERSION.replace('v', '')}
+          onUpdateGas={tm.applyGasUpdate}
+          onTriggerWebUpdate={tm.triggerWebUpdate}
+          onDismiss={tm.dismissUpdate}
+          th={th} />
       )}
 
       {tm.syncStatus === 'syncing' && (
