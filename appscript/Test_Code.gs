@@ -1,8 +1,16 @@
 // ============================================================
 //  통합 템플릿 Code.gs — 컨테이너-바운드 (Sheet 내부)
-//  배포자가 1회 준비 후, 사용자는 사본 만들기만 하면 됨
-//  SHEET_ID 자동 감지 + 라이브러리 링크 (1회 수동 UI)
+//  SHEET_ID를 아래에 직접 입력하거나, 비워두면 현재 스프레드시트를 자동 사용
 // ============================================================
+
+const SHEET_ID_OVERRIDE = ""; // 👈 여기에 Google Sheets ID를 입력하세요 (비워두면 현재 시트 사용)
+
+function _resolveSheetId() {
+  if (SHEET_ID_OVERRIDE) return SHEET_ID_OVERRIDE;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss) return ss.getId();
+  throw new Error("SHEET_ID를 설정하거나, 스프레드시트에 컨테이너-바운드로 배포하세요.");
+}
 
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
@@ -41,10 +49,12 @@ function _cors(data) {
 
 function doGet(e) {
   const action = e.parameter.action || "getTasks";
+  PriorityMatrixLibrary.initPriorityMatrix(_resolveSheetId());
   return _cors(PriorityMatrixLibrary.callPublicAPI(action, e.parameter));
 }
 
 function doPost(e) {
   const body = JSON.parse(e.postData.contents);
+  PriorityMatrixLibrary.initPriorityMatrix(_resolveSheetId());
   return _cors(PriorityMatrixLibrary.callPublicAPI(body.action, body));
 }
