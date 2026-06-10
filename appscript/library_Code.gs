@@ -261,6 +261,7 @@ function callPublicAPI(action, params) {
     if (action === "deleteCompleted") return deleteCompleted(params.id);
     if (action === "updateMemos") return updateMemos(params.id, params.memos, params.sheet);
     if (action === "saveSettings") return saveSettings(params.settings);
+    if (action === "resetDB") return resetDB(_getSheetId());
     return { error: "Unknown action: " + action };
   } catch (err) {
     return { error: err.message };

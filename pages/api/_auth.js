@@ -1,9 +1,10 @@
 import crypto from 'crypto';
 
 export function getExpectedToken() {
+  const secret = process.env.SESSION_SECRET || process.env.AUTH_PASS || 'dev';
   return crypto
-    .createHmac('sha256', process.env.AUTH_PASS || 'dev')
-    .update(process.env.AUTH_USER || '')
+    .createHmac('sha256', secret)
+    .update(`${process.env.AUTH_USER || ''}:${process.env.AUTH_PASS || ''}`)
     .digest('hex');
 }
 

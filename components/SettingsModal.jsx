@@ -1,10 +1,14 @@
 import { useState } from 'react';
+import { APP_VERSION } from '../lib/constants';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export default function SettingsModal({ sideRight, themeKey, appName, onSave, onClose, th }) {
+  const isMobile = useIsMobile();
   const [localSideRight, setLocalSideRight] = useState(sideRight);
   const [localThemeKey, setLocalThemeKey] = useState(themeKey);
   const [localAppName, setLocalAppName] = useState(appName);
   const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [error, setError] = useState(null);
 
   async function handleSave() {
@@ -23,12 +27,35 @@ export default function SettingsModal({ sideRight, themeKey, appName, onSave, on
     }
   }
 
+  async function handleResetDB() {
+    if (!window.confirm('⚠️ DB를 초기화하면 모든 작업과 완료 데이터가 영구 삭제됩니다.\n\n정말 초기화하시겠습니까?')) return;
+    setResetting(true);
+    setError(null);
+    try {
+      const r = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'resetDB' }),
+      });
+      const data = await r.json();
+      if (data.ok) {
+        window.location.reload();
+      } else {
+        setError('DB 초기화 실패: ' + (data.error || '알 수 없는 오류'));
+        setResetting(false);
+      }
+    } catch {
+      setError('DB 초기화 중 오류가 발생했습니다.');
+      setResetting(false);
+    }
+  }
+
   async function handleLogout() {
     await fetch('/api/logout', { method: 'POST' });
     window.location.reload();
   }
 
-  const disabled = saving;
+  const disabled = saving || resetting;
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -48,17 +75,19 @@ export default function SettingsModal({ sideRight, themeKey, appName, onSave, on
               style={{ width: '100%', background: th.inputBg, border: `1px solid ${th.border2}`, borderRadius: 6, padding: '8px 10px', color: th.inputColor, fontSize: 12, fontFamily: 'inherit', opacity: disabled ? 0.6 : 1 }} />
           </div>
 
-          <div>
-            <div style={{ fontSize: 11, color: th.textMuted, marginBottom: 8, fontWeight: 500 }}>업무 목록 위치</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {[['좌측', false], ['우측', true]].map(([l, v]) => (
-                <button key={l} onClick={() => !disabled && setLocalSideRight(v)} disabled={disabled}
-                  style={{ flex: 1, padding: '10px', borderRadius: 8, border: `1.5px solid ${localSideRight === v ? '#00D4AA' : th.border2}`, background: localSideRight === v ? '#00D4AA' : th.inputBg, color: localSideRight === v ? '#000' : th.textMuted, fontSize: 13, fontWeight: localSideRight === v ? 700 : 400, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: disabled ? 0.6 : 1 }}>
-                  {l}
-                </button>
-              ))}
+          {!isMobile && (
+            <div>
+              <div style={{ fontSize: 11, color: th.textMuted, marginBottom: 8, fontWeight: 500 }}>업무 목록 위치</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[['좌측', false], ['우측', true]].map(([l, v]) => (
+                  <button key={l} onClick={() => !disabled && setLocalSideRight(v)} disabled={disabled}
+                    style={{ flex: 1, padding: '10px', borderRadius: 8, border: `1.5px solid ${localSideRight === v ? '#00D4AA' : th.border2}`, background: localSideRight === v ? '#00D4AA' : th.inputBg, color: localSideRight === v ? '#000' : th.textMuted, fontSize: 13, fontWeight: localSideRight === v ? 700 : 400, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: disabled ? 0.6 : 1 }}>
+                    {l}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <div style={{ fontSize: 11, color: th.textMuted, marginBottom: 8, fontWeight: 500 }}>테마</div>
@@ -80,10 +109,18 @@ export default function SettingsModal({ sideRight, themeKey, appName, onSave, on
           {saving ? '저장 중...' : '저장'}
         </button>
 
-        <button onClick={handleLogout} disabled={disabled}
-          style={{ marginTop: 10, width: '100%', background: 'transparent', color: th.textMuted, border: `1px solid ${th.border2}`, padding: '8px', borderRadius: 8, fontSize: 12, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: disabled ? 0.4 : 1 }}>
-          로그아웃
+        <button onClick={handleResetDB} disabled={disabled}
+          style={{ marginTop: 10, width: '100%', background: 'transparent', color: '#ff6b6b', border: '1px solid #ff6b6b55', padding: '8px', borderRadius: 8, fontSize: 12, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: disabled ? 0.4 : 1 }}>
+          {resetting ? 'DB 초기화 중...' : '🗄️ DB 초기화'}
         </button>
+
+        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button onClick={handleLogout} disabled={disabled}
+            style={{ background: 'transparent', color: th.textMuted, border: 'none', padding: 0, fontSize: 11, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: disabled ? 0.4 : 0.7 }}>
+            로그아웃
+          </button>
+          <span style={{ fontSize: 10, color: th.textFaint }}>{APP_VERSION}</span>
+        </div>
       </div>
     </div>
   );
