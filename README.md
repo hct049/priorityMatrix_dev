@@ -3,6 +3,9 @@
 마감일 × 중요도 기반으로 할 일을 아이젠하워 매트릭스 4분면에 자동 분류하는 웹 앱입니다.  
 Next.js + Vercel로 프론트엔드를 제공하고, Google Apps Script + Google Sheets를 DB로 사용합니다.
 
+> **이 README의 설치 순서는 스프레드시트 GUIDE 시트의 내용과 동일합니다.**  
+> 설치 중 막히는 부분이 있으면 GUIDE 시트를 함께 참고하세요.
+
 ---
 
 ## 스택
@@ -33,44 +36,40 @@ Next.js + Vercel로 프론트엔드를 제공하고, Google Apps Script + Google
 
 ---
 
-### 2. Google Sheets 생성
+### 2. TEMPLATE 스프레드시트 복사
 
-1. [Google Sheets](https://sheets.google.com)에서 빈 스프레드시트를 새로 만듭니다.
-2. URL에서 스프레드시트 ID를 복사합니다.
-   ```
-   https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit
-   ```
+아래 링크에서 TEMPLATE 스프레드시트를 **사본 만들기**합니다.
+
+**[TEMPLATE 열기](https://docs.google.com/spreadsheets/d/153_7L15EJ1FZf3RGkayPSq-aWKec52gV_-eBoEmS2-0)**
+
+> 파일 → 사본 만들기
+
+사본을 만들면 GAS 프로젝트(라이브러리 포함)와 Code.gs가 함께 복사됩니다.  
+GAS 프로젝트 생성 및 라이브러리 추가 작업을 건너뛸 수 있습니다.
+
+복사된 스프레드시트 URL에서 스프레드시트 ID를 복사합니다.
+
+```
+https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit
+```
 
 ---
 
 ### 3. Google Apps Script 설정
 
-#### 3-1. GAS 프로젝트 생성
+#### 3-1. GAS 편집기 열기
 
-1. [script.google.com](https://script.google.com)에서 **새 프로젝트**를 만듭니다.
-2. 프로젝트 이름을 적당히 지정합니다 (예: `PriorityMatrix`).
+복사된 스프레드시트에서 **확장 프로그램 → Apps Script**를 클릭합니다.
 
-#### 3-2. 라이브러리 추가
+#### 3-2. SHEET_ID 입력
 
-1. 좌측 **라이브러리 (+)** 클릭
-2. 스크립트 ID 입력:
-   ```
-   1dp7BWPBFVjCFNEHSNPnTCRpgxLWfumEVXiGGKsTu7Y3aB6g6Nt6F_a-v
-   ```
-3. 버전: 최신 버전 선택
-4. 식별자: `PriorityMatrixLibrary` (그대로 유지)
-5. **추가** 클릭
-
-#### 3-3. 코드 작성
-
-`코드.gs` 파일의 내용을 이 저장소의 `appscript/Test_Code.gs` 파일 내용으로 **전체 교체**하고,  
-상단의 `SHEET_ID`에 2단계에서 복사한 스프레드시트 ID를 입력합니다.
+`코드.gs` 상단의 `SHEET_ID`에 2단계에서 복사한 스프레드시트 ID를 입력합니다.
 
 ```javascript
 const SHEET_ID = "여기에_스프레드시트_ID_입력";
 ```
 
-#### 3-4. 웹앱 배포
+#### 3-3. 웹앱 배포
 
 1. 우측 상단 **배포 → 새 배포** 클릭
 2. 유형: **웹 앱** 선택
@@ -79,10 +78,9 @@ const SHEET_ID = "여기에_스프레드시트_ID_입력";
    - 액세스 권한: **모든 사용자**
 4. **배포** 클릭 후 웹앱 URL 복사 → 이것이 `GAS_URL`
 
-#### 3-5. DB 초기화
+#### 3-4. DB 초기화
 
-배포 후 스프레드시트를 열면 상단 메뉴에 **Priority Matrix**가 생성됩니다.  
-**Priority Matrix → DB 초기화 (전체 삭제 후 재생성)** 를 실행합니다.  
+스프레드시트 상단 메뉴 **Priority Matrix → DB 초기화 (전체 삭제 후 재생성)** 를 실행합니다.  
 `tasks`, `completed`, `settings` 시트가 생성되면 정상입니다.
 
 ---
