@@ -3,8 +3,8 @@
 // ============================================================
 
 // 개발자가 배포 시 버전을 올립니다
-const CURRENT_GAS_VERSION = '0.0';
-const CURRENT_WEB_VERSION = '0.0';
+const CURRENT_GAS_VERSION = 'v0.0';
+const CURRENT_WEB_VERSION = 'v0.0';
 
 const TASKS_SHEET = "tasks";
 const COMPLETED_SHEET = "completed";
