@@ -210,7 +210,7 @@ function AppContent() {
           needsGasUpdate={tm.needsGasUpdate}
           needsWebUpdate={tm.needsWebUpdate}
           appliedGasVersion={tm.appliedGasVersion}
-          currentWebVersion={APP_VERSION.replace('v', '')}
+          currentWebVersion={APP_VERSION}
           onUpdateGas={tm.applyGasUpdate}
           onTriggerWebUpdate={tm.triggerWebUpdate}
           onDismiss={tm.dismissUpdate}
