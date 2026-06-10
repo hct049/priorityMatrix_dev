@@ -177,6 +177,10 @@ function saveSettings(settings) {
   return { ok: true };
 }
 
+function ping() {
+  return { ok: true, message: "PriorityMatrixLibrary 연동 정상", timestamp: new Date().toISOString() };
+}
+
 function callPublicAPI(action, params) {
   try {
     if (action === "getTasks") return getTasks();
