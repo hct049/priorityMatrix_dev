@@ -48,6 +48,7 @@ function _getOrCreateSheet(name, headers) {
 }
 
 function _sheetToObjects(sh, headers) {
+  const tz = Session.getScriptTimeZone();
   const data = sh.getDataRange().getValues();
   if (data.length <= 1) return [];
   return data.slice(1).map(row => {
@@ -56,8 +57,18 @@ function _sheetToObjects(sh, headers) {
       let v = row[i];
       if (h === "repeatWeekdays" || h === "memos") {
         try { v = JSON.parse(v || "[]"); } catch (e) { v = []; }
+      } else if (h === "importance" || h === "repeatInterval") {
+        v = Number(v) || 0;
+      } else if (v instanceof Date) {
+        if (h === "deadline") {
+          v = Utilities.formatDate(v, tz, "yyyy-MM-dd");
+        } else if (h === "deadlineTime") {
+          v = Utilities.formatDate(v, tz, "HH:mm");
+        } else {
+          // createdAt, completedAt, deletedAt 등 ISO 타임스탬프 필드
+          v = v.toISOString();
+        }
       }
-      if (h === "importance" || h === "repeatInterval") v = Number(v) || 0;
       obj[h] = v;
     });
     return obj;
